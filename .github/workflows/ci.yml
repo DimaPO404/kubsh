@@ -2,9 +2,9 @@ name: Kubsh CI/CD
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
 
 jobs:
   build-deb:
@@ -15,22 +15,21 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential g++ make libfuse3-dev pkg-config debhelper devscripts
-      
+          sudo apt-get install -y build-essential g++ make libfuse3-dev pkg-config
+          
       - name: Build deb package
-        run: make deb
-      
+        run: |
+          make clean
+          make deb
+          
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: kubsh-deb
           path: kubsh.deb
-          retention-days: 1
 
   run-tests:
-    needs: build-deb
     runs-on: ubuntu-22.04
-    container: tyvik/kubsh_test:master
     steps:
       - uses: actions/checkout@v4
       
@@ -40,10 +39,25 @@ jobs:
           name: kubsh-deb
           path: /tmp
       
-      - name: Install package and run tests
+      - name: Setup environment and run tests
         run: |
-          apt-get update -qq
-          apt-get install -y -qq /tmp/kubsh.deb
+          # Установка зависимостей
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++ make libfuse3-dev pkg-config fuse3
+          
+          # Установка пакета
+          sudo apt install -y /tmp/kubsh.deb
+          
+          # Настройка FUSE (аналог postinst)
+          sudo mkdir -p /opt/users
+          sudo chmod 755 /opt/users
+          sudo chown root:root /opt/users
+          if [ -e /dev/fuse ]; then
+              sudo chmod 666 /dev/fuse || true
+          fi
+          sudo modprobe fuse || true
+          
+          # Запуск тестов
           /opt/check.sh
         env:
           FUSE_PATH: /opt/users
