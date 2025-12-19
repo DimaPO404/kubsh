@@ -3,4 +3,4 @@
 
 void fuse_start();
 
-#endif // VFS_HPP
+#endif

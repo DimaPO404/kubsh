@@ -128,19 +128,15 @@ void execute_external(const string& input) {
 }
 
 void check_disk_partitions(const string& device_path) {
-    // Попытка открыть устройство
     ifstream device(device_path, ios::binary);
     
-    // Если не удалось открыть, пытаемся получить информацию через lsblk
     if (!device) {
-        // Проверяем, существует ли файл
         struct stat buffer;
         if (stat(device_path.c_str(), &buffer) != 0) {
             cout << "Error: Device " << device_path << " does not exist\n";
             return;
         }
         
-        // Запускаем lsblk для получения информации о диске
         cout << "Using lsblk to get partition information:\n";
         pid_t pid = fork();
         if (pid == 0) {
@@ -154,7 +150,6 @@ void check_disk_partitions(const string& device_path) {
         return;
     }
     
-    // Чтение MBR
     char sector[512];
     device.read(sector, 512);
     
@@ -163,13 +158,11 @@ void check_disk_partitions(const string& device_path) {
         return;
     }
     
-    // Проверка сигнатуры MBR
     if ((unsigned char)sector[510] != 0x55 || (unsigned char)sector[511] != 0xAA) {
         cerr << "Error: Invalid disk signature\n";
         return;
     }
-    
-    // Проверка типа диска (MBR или GPT)
+
     bool is_gpt = false;
     for (int i = 0; i < 4; i++) {
         if ((unsigned char)sector[446 + i * 16 + 4] == 0xEE) {
@@ -179,7 +172,6 @@ void check_disk_partitions(const string& device_path) {
     }
     
     if (!is_gpt) {
-        // Вывод информации о разделах MBR
         bool partition_found = false;
         for (int i = 0; i < 4; i++) {
             int offset = 446 + i * 16;
@@ -199,7 +191,6 @@ void check_disk_partitions(const string& device_path) {
             cout << "No partitions found\n";
         }
     } else {
-        // Чтение второй области для GPT
         device.read(sector, 512);
         if (device.gcount() == 512 && 
             sector[0] == 'E' && sector[1] == 'F' && sector[2] == 'I' && sector[3] == ' ' &&
@@ -214,17 +205,14 @@ void check_disk_partitions(const string& device_path) {
 }
 
 void handle_sighup(int) {
-    // Выводим сообщение немедленно
     write(STDOUT_FILENO, "\nConfiguration reloaded\n", 25);
     sighup_received = 1;
 }
 
 int main() {
-    // Устанавливаем буферизацию для немедленного вывода
     cout << unitbuf;
     cerr << unitbuf;
     
-    // Настройка обработчика сигналов
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handle_sighup;
@@ -232,15 +220,12 @@ int main() {
     sa.sa_flags = SA_RESTART;
     sigaction(SIGHUP, &sa, nullptr);
     
-    // Загрузка истории
     load_history();
     
-    // Запуск FUSE файловой системы в отдельном потоке
     fuse_start();
     
     string input;
     while (true) {
-        // Выводим приглашение только для интерактивного режима
         if (isatty(STDIN_FILENO)) {
             cout << "$ ";
         }
@@ -254,18 +239,15 @@ int main() {
         if (input.empty()) continue;
         history.push_back(input);
         
-        // Сразу проверяем сигналы
         if (sighup_received) {
             sighup_received = 0;
             continue;
         }
         
-        // Встроенная команда выхода
         if (input == "\\q") {
             break;
         }
         
-        // Встроенная команда истории
         if (input == "history") {
             for (size_t i = 0; i < history.size(); ++i) {
                 cout << (i+1) << ": " << history[i] << '\n';
@@ -273,19 +255,16 @@ int main() {
             continue;
         }
         
-        // Встроенная команда для вывода переменных окружения
         if (input.rfind("\\e", 0) == 0) {
             my_env(input);
             continue;
         }
         
-        // Встроенная команда echo
         if (input.rfind("echo", 0) == 0) {
             my_echo(input);
             continue;
         }
         
-        // Команда для просмотра разделов диска
         if (input.rfind("\\l", 0) == 0) {
             vector<string> args = split_args(input);
             if (args.size() != 2) {
@@ -306,11 +285,9 @@ int main() {
     continue;
 }
         
-        // Попытка выполнить внешнюю команду
         execute_external(input);
     }
     
-    // Сохранение истории перед выходом
     save_history();
     return 0;
 }
