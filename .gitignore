@@ -1,0 +1,17 @@
+# Build directories
+build/
+package/
+
+# Executable files
+kubsh
+*.deb
+*.o
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*~
+
+# Docker artifacts
+Dockerfile

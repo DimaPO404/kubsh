@@ -1,0 +1,15 @@
+Source: kubsh
+Section: utils
+Priority: optional
+Maintainer: Dmitriy Postrichev <dima@email.com>
+Build-Depends: debhelper-compat (= 13), g++ (>= 4:11), make, libfuse3-dev
+Standards-Version: 4.6.1
+
+Package: kubsh
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, fuse3, coreutils, util-linux, passwd, adduser
+Description: Custom shell with VFS for user management
+ Implements all Kubsh requirements including FUSE-based VFS for user management.
+ Features a complete shell implementation with history, environment variables,
+ signal handling, and disk partition information.
+

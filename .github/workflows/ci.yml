@@ -1,0 +1,55 @@
+name: Kubsh CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++ make libfuse3-dev pkg-config debhelper devscripts
+      
+      - name: Build deb package
+        run: make deb
+      
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubsh-deb
+          path: kubsh.deb
+          retention-days: 1
+
+  run-tests:
+    needs: build-deb
+    runs-on: ubuntu-22.04
+    container: tyvik/kubsh_test:master
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kubsh-deb
+          path: /tmp
+      
+      - name: Install package and run tests
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq /tmp/kubsh.deb
+          /opt/check.sh
+        env:
+          FUSE_PATH: /opt/users
+
+  final-check:
+    needs: run-tests
+    runs-on: ubuntu-22.04
+    steps:
+      - run: echo "✅ All tests passed successfully!"
