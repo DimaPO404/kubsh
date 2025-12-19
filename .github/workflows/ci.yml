@@ -48,22 +48,9 @@ jobs:
           # Установка пакета
           sudo apt install -y /tmp/kubsh.deb
           
-          # Настройка FUSE (аналог postinst)
-          sudo mkdir -p /opt/users
-          sudo chmod 755 /opt/users
-          sudo chown root:root /opt/users
-          if [ -e /dev/fuse ]; then
-              sudo chmod 666 /dev/fuse || true
-          fi
-          sudo modprobe fuse || true
+          # Проверка установки
+          which kubsh
+          ls -la /usr/bin/kubsh
           
-          # Запуск тестов
-          /opt/check.sh
-        env:
-          FUSE_PATH: /opt/users
-
-  final-check:
-    needs: run-tests
-    runs-on: ubuntu-22.04
-    steps:
-      - run: echo "✅ All tests passed successfully!"
+          # Запуск тестов в контейнере с FUSE
+          docker run --rm --privileged -v /dev/fuse:/dev/fuse -v /tmp:/mnt tyvik/kubsh_test:master /opt/check.sh
