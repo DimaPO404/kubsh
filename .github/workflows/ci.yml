@@ -15,7 +15,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential g++ make libfuse3-dev pkg-config
+          sudo apt-get install -y --no-install-recommends build-essential g++ make libfuse3-dev pkg-config
           
       - name: Build deb package
         run: |
@@ -41,16 +41,49 @@ jobs:
           name: kubsh-deb
           path: /tmp
       
-      - name: Install Docker
+      - name: Debug environment
         run: |
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-          sudo systemctl start docker
-          
+          echo "=== Environment Information ==="
+          uname -a
+          lsb_release -a
+          docker --version || echo "Docker not installed"
+          sudo docker --version || echo "Docker not available with sudo"
+          echo "Current directory: $(pwd)"
+          echo "Files in /tmp:"
+          ls -la /tmp/
+          echo "Artifact size: $(stat -c%s /tmp/kubsh.deb || echo 'File not found')"
+      
+      - name: Fix permissions for artifact
+        run: |
+          sudo chmod 644 /tmp/kubsh.deb || echo "Permission fix not needed"
+          sudo chown root:root /tmp/kubsh.deb || echo "Ownership fix not needed"
+      
       - name: Run tests in Docker container
         run: |
-          sudo docker run --rm --privileged \
+          echo "=== Starting test container ==="
+          # Проверяем, что Docker доступен
+          if ! command -v docker &> /dev/null && ! command -v sudo &> /dev/null; then
+            echo "ERROR: Docker is not available in this environment"
+            exit 1
+          fi
+          
+          # Пробуем запустить Docker без sudo сначала
+          if command -v docker &> /dev/null; then
+            DOCKER_CMD="docker"
+          elif command -v sudo &> /dev/null && sudo docker --version &> /dev/null; then
+            DOCKER_CMD="sudo docker"
+          else
+            echo "ERROR: Cannot find working Docker command"
+            exit 1
+          fi
+          
+          echo "Using Docker command: $DOCKER_CMD"
+          
+          # Запускаем тесты в контейнере
+          $DOCKER_CMD run --rm --privileged \
             -v /dev/fuse:/dev/fuse \
-            -v /tmp:/mnt \
+            -v /tmp:/mnt:ro \
             tyvik/kubsh_test:master \
-            bash -c "apt update && apt install -y /mnt/kubsh.deb && /opt/check.sh"
+            bash -c 'set -e; echo "Container started"; apt update -qq; apt install -y -qq /mnt/kubsh.deb; echo "Package installed"; /opt/check.sh; echo "Tests completed successfully"'
+        env:
+          FUSE_PATH: /opt/users
