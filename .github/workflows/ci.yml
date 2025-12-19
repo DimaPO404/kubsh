@@ -27,9 +27,11 @@ jobs:
         with:
           name: kubsh-deb
           path: kubsh.deb
+          retention-days: 1
 
   run-tests:
     runs-on: ubuntu-22.04
+    needs: build-deb  # Явная зависимость
     steps:
       - uses: actions/checkout@v4
       
@@ -47,10 +49,6 @@ jobs:
           
           # Установка пакета
           sudo apt install -y /tmp/kubsh.deb
-          
-          # Проверка установки
-          which kubsh
-          ls -la /usr/bin/kubsh
           
           # Запуск тестов в контейнере с FUSE
           docker run --rm --privileged -v /dev/fuse:/dev/fuse -v /tmp:/mnt tyvik/kubsh_test:master /opt/check.sh
