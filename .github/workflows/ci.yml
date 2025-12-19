@@ -31,7 +31,7 @@ jobs:
 
   run-tests:
     runs-on: ubuntu-22.04
-    needs: build-deb  # Явная зависимость
+    needs: build-deb
     steps:
       - uses: actions/checkout@v4
       
@@ -41,14 +41,16 @@ jobs:
           name: kubsh-deb
           path: /tmp
       
-      - name: Setup environment and run tests
+      - name: Install Docker
         run: |
-          # Установка зависимостей
           sudo apt-get update
-          sudo apt-get install -y build-essential g++ make libfuse3-dev pkg-config fuse3
+          sudo apt-get install -y docker.io
+          sudo systemctl start docker
           
-          # Установка пакета
-          sudo apt install -y /tmp/kubsh.deb
-          
-          # Запуск тестов в контейнере с FUSE
-          docker run --rm --privileged -v /dev/fuse:/dev/fuse -v /tmp:/mnt tyvik/kubsh_test:master /opt/check.sh
+      - name: Run tests in Docker container
+        run: |
+          sudo docker run --rm --privileged \
+            -v /dev/fuse:/dev/fuse \
+            -v /tmp:/mnt \
+            tyvik/kubsh_test:master \
+            bash -c "apt update && apt install -y /mnt/kubsh.deb && /opt/check.sh"
