@@ -25,6 +25,9 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 run: $(TARGET)
 	$(BIN_DIR)/$(TARGET)
+	
+test:
+	docker run --rm --privileged -v /dev/fuse:/dev/fuse -v $(shell pwd):/mnt tyvik/kubsh_test:master /opt/check.sh
 
 prepare-deb: $(TARGET)
 	@echo "Подготовка структуры для deb-пакета..."
@@ -59,5 +62,5 @@ clean:
 	rm -rf $(BUILD_DIR) 2>/dev/null || sudo rm -rf $(BUILD_DIR) 2>/dev/null || true
 	rm -f kubsh.deb $(TARGET) *.o 2>/dev/null || true
 
-.PHONY: all run deb clean prepare-deb
+.PHONY: all run deb clean prepare-deb test
 
